@@ -35,6 +35,19 @@ class TaskCreate(BaseModel):
     log_line: str
 
 
+@app.get("/")
+def root() -> dict[str, Any]:
+    return {
+        "name": "logqueue",
+        "description": (
+            "A fault-tolerant Postgres-backed task queue with lease-based "
+            "crash recovery, exponential-backoff retries, and a dead-letter queue."
+        ),
+        "docs": "/docs",
+        "stats": stats(),
+    }
+
+
 @app.post("/tasks", status_code=201)
 def create_task(body: TaskCreate) -> dict[str, Any]:
     with pool.connection() as conn:
