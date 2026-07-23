@@ -28,5 +28,16 @@ services:
     volumes:
       - .:/app
 
+  worker:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - .:/app
+    command: ["python", "-m", "app.worker"]
+
 volumes:
   pgdata:
