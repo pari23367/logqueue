@@ -45,6 +45,10 @@ def claim_task(conn: psycopg.Connection) -> dict | None:
         "WHERE id = %s",
         [WORKER_ID, row["id"]],
     )
+    conn.execute(
+        "INSERT INTO task_executions (task_id, worker_id) VALUES (%s, %s)",
+        [row["id"], WORKER_ID],
+    )
     conn.commit()
     return row
 
