@@ -16,6 +16,8 @@ WORKER_ID = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
 FAILURE_RATE = float(os.environ.get("FAILURE_RATE", "0"))
 MAX_ATTEMPTS = 5
 HEARTBEAT_INTERVAL_SECONDS = 5
+WORKER_SLEEP_MIN = float(os.environ.get("WORKER_SLEEP_MIN", "0.1"))
+WORKER_SLEEP_MAX = float(os.environ.get("WORKER_SLEEP_MAX", "0.5"))
 
 LOG_LINE_RE = re.compile(r"^(?P<timestamp>\S+)\s+(?P<level>\w+)\s+(?P<message>.*)$")
 
@@ -124,7 +126,7 @@ def run() -> None:
             )
             hb_thread.start()
             try:
-                time.sleep(random.uniform(0.1, 0.5))
+                time.sleep(random.uniform(WORKER_SLEEP_MIN, WORKER_SLEEP_MAX))
                 maybe_inject_failure()
                 parsed = parse_log_line(task["payload"]["log_line"])
                 complete_task(conn, task["id"], parsed)

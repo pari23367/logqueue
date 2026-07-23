@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: taskqueue
+          POSTGRES_PASSWORD: change_me
+          POSTGRES_DB: taskqueue
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U taskqueue -d taskqueue"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://taskqueue:change_me@localhost:5432/taskqueue
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Apply schema
+        run: psql "$DATABASE_URL" -f schema.sql
+
+      - name: Run tests
+        run: pytest -v
