@@ -22,9 +22,9 @@ WORKER_SLEEP_MAX = float(os.environ.get("WORKER_SLEEP_MAX", "0.5"))
 LOG_LINE_RE = re.compile(r"^(?P<timestamp>\S+)\s+(?P<level>\w+)\s+(?P<message>.*)$")
 
 
-def log_event(action: str, task_id: int | str) -> None:
+def log_event(action: str, task_id: int | str, worker_id: str = WORKER_ID) -> None:
     print(
-        f"worker_id={WORKER_ID} task_id={task_id} action={action} "
+        f"worker_id={worker_id} task_id={task_id} action={action} "
         f"timestamp={datetime.now(timezone.utc).isoformat()}",
         flush=True,
     )
@@ -42,7 +42,7 @@ def maybe_inject_failure() -> None:
         raise RuntimeError("injected failure (FAILURE_RATE)")
 
 
-def claim_task(conn: psycopg.Connection) -> dict | None:
+def claim_task(conn: psycopg.Connection, worker_id: str = WORKER_ID) -> dict | None:
     row = conn.execute(
         """
         WITH next AS (
@@ -58,18 +58,18 @@ def claim_task(conn: psycopg.Connection) -> dict | None:
         WHERE tasks.id = next.id
         RETURNING tasks.id, tasks.payload
         """,
-        [WORKER_ID],
+        [worker_id],
     ).fetchone()
     if row is None:
         conn.rollback()
-        log_event("claim_attempt_empty", "-")
+        log_event("claim_attempt_empty", "-", worker_id)
         return None
     conn.execute(
         "INSERT INTO task_executions (task_id, worker_id) VALUES (%s, %s)",
-        [row["id"], WORKER_ID],
+        [row["id"], worker_id],
     )
     conn.commit()
-    log_event("claim_attempt_succeeded", row["id"])
+    log_event("claim_attempt_succeeded", row["id"], worker_id)
     return row
 
 
@@ -98,30 +98,35 @@ def fail_task(conn: psycopg.Connection, task_id: int) -> None:
     conn.commit()
 
 
-def heartbeat_loop(conn: psycopg.Connection, stop_event: threading.Event, task_id: int) -> None:
+def heartbeat_loop(
+    conn: psycopg.Connection,
+    stop_event: threading.Event,
+    task_id: int,
+    worker_id: str = WORKER_ID,
+) -> None:
     while not stop_event.wait(HEARTBEAT_INTERVAL_SECONDS):
         conn.execute(
             "UPDATE tasks SET locked_at = now() WHERE id = %s AND locked_by = %s",
-            [task_id, WORKER_ID],
+            [task_id, worker_id],
         )
 
 
-def run() -> None:
+def worker_loop(worker_id: str = WORKER_ID) -> None:
     conn = psycopg.connect(DATABASE_URL, row_factory=dict_row, autocommit=False)
     heartbeat_conn = psycopg.connect(DATABASE_URL, autocommit=True)
-    log_event("worker_started", "-")
+    log_event("worker_started", "-", worker_id)
     try:
         while True:
-            task = claim_task(conn)
+            task = claim_task(conn, worker_id)
             if task is None:
                 time.sleep(0.5)
                 continue
-            log_event("claimed", task["id"])
+            log_event("claimed", task["id"], worker_id)
 
             stop_heartbeat = threading.Event()
             hb_thread = threading.Thread(
                 target=heartbeat_loop,
-                args=(heartbeat_conn, stop_heartbeat, task["id"]),
+                args=(heartbeat_conn, stop_heartbeat, task["id"], worker_id),
                 daemon=True,
             )
             hb_thread.start()
@@ -130,16 +135,20 @@ def run() -> None:
                 maybe_inject_failure()
                 parsed = parse_log_line(task["payload"]["log_line"])
                 complete_task(conn, task["id"], parsed)
-                log_event("completed", task["id"])
+                log_event("completed", task["id"], worker_id)
             except Exception as exc:
                 fail_task(conn, task["id"])
-                log_event(f"failed:{type(exc).__name__}", task["id"])
+                log_event(f"failed:{type(exc).__name__}", task["id"], worker_id)
             finally:
                 stop_heartbeat.set()
                 hb_thread.join()
     finally:
         conn.close()
         heartbeat_conn.close()
+
+
+def run() -> None:
+    worker_loop(WORKER_ID)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: logqueue
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: WORKER_MODE
+        value: embedded

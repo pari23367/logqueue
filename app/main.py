@@ -1,13 +1,34 @@
+import os
+import threading
+import uuid
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel
 
-from app.db import pool
+from app import reaper as reaper_module
+from app.db import ensure_schema, pool
 from app.reaper import LEASE_TIMEOUT_SECONDS
+from app.worker import worker_loop
 
-app = FastAPI()
+WORKER_MODE = os.environ.get("WORKER_MODE", "standalone")
+EMBEDDED_WORKER_COUNT = int(os.environ.get("EMBEDDED_WORKER_COUNT", "4"))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    ensure_schema()
+    if WORKER_MODE == "embedded":
+        for i in range(EMBEDDED_WORKER_COUNT):
+            worker_id = f"embedded-{os.getpid()}-{i}-{uuid.uuid4().hex[:8]}"
+            threading.Thread(target=worker_loop, args=(worker_id,), daemon=True).start()
+        threading.Thread(target=reaper_module.run, daemon=True).start()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 class TaskCreate(BaseModel):
