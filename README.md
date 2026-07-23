@@ -133,6 +133,19 @@ docker compose up -d --build
 
 The API is then available at `http://localhost:8000`.
 
+### Reproduce the headline result
+
+Four commands to see the exactly-once claim and crash recovery for yourself, end to end:
+
+```bash
+docker compose up -d --build --scale worker=4
+python seed.py 500
+docker compose run --rm api python scripts/check_duplicates.py
+python scripts/chaos.py
+```
+
+The first seeds and processes 500 tasks with 4 workers racing on the queue; `check_duplicates.py` confirms `total executions == total tasks` — zero duplicates, the fix from [The race condition](#the-race-condition) holding under real concurrency. `chaos.py` then enqueues its own batch and spends 90 seconds `docker kill`-ing random workers mid-task, ending with the same assertion this README's [Chaos test](#chaos-test) numbers came from: every task lands in `completed` or `dead_letter`, none stuck, none unaccounted for. `chaos.py` runs on the host (not in a container, since it needs to kill and restart containers itself), so it needs `requests` and `psycopg` installed locally: `pip install -r requirements.txt`.
+
 ## Design decisions
 
 Full reasoning in [`DECISIONS.md`](DECISIONS.md). Highlights:
