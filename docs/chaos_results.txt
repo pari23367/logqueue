@@ -1,0 +1,44 @@
+﻿enqueuing 1000 tasks...
+enqueued 100/1000
+enqueued 200/1000
+enqueued 300/1000
+enqueued 400/1000
+enqueued 500/1000
+enqueued 600/1000
+enqueued 700/1000
+enqueued 800/1000
+enqueued 900/1000
+enqueued 1000/1000
+running chaos for 90s...
+chaos action=kill container=logqueue-worker-1 timestamp=2026-07-23T17:26:53.774624+00:00
+chaos action=kill container=logqueue-worker-1 timestamp=2026-07-23T17:27:02.070326+00:00
+chaos action=kill container=logqueue-worker-3 timestamp=2026-07-23T17:27:10.820131+00:00
+chaos action=kill container=logqueue-worker-4 timestamp=2026-07-23T17:27:19.201994+00:00
+chaos action=kill container=logqueue-worker-2 timestamp=2026-07-23T17:27:26.855595+00:00
+chaos action=kill container=logqueue-worker-3 timestamp=2026-07-23T17:27:34.184800+00:00
+chaos action=kill container=logqueue-worker-1 timestamp=2026-07-23T17:27:40.961950+00:00
+chaos action=kill container=logqueue-worker-4 timestamp=2026-07-23T17:27:49.193893+00:00
+chaos action=kill container=logqueue-worker-4 timestamp=2026-07-23T17:27:56.369825+00:00
+chaos action=kill container=logqueue-worker-2 timestamp=2026-07-23T17:28:02.993614+00:00
+chaos action=kill container=logqueue-worker-2 timestamp=2026-07-23T17:28:10.142982+00:00
+chaos action=kill container=logqueue-worker-3 timestamp=2026-07-23T17:28:17.438725+00:00
+chaos period done, waiting for queue to drain...
+draining: 3 tasks still pending/in_progress
+draining: 2 tasks still pending/in_progress
+draining: 2 tasks still pending/in_progress
+draining: 2 tasks still pending/in_progress
+draining: 1 tasks still pending/in_progress
+draining: 1 tasks still pending/in_progress
+draining: 1 tasks still pending/in_progress
+
+=== Chaos test summary ===
+total tasks              1000
+completed                1000
+dead_letter              0
+total executions         1010
+tasks that needed retry  10
+duplicate executions     0
+stuck in_progress        0
+workers killed           12
+
+PASSED: zero task loss, zero unexplained duplicate executions
