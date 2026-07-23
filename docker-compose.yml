@@ -35,9 +35,12 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      PYTHONUNBUFFERED: "1"
     volumes:
       - .:/app
     command: ["python", "-m", "app.worker"]
+    deploy:
+      replicas: 4
 
 volumes:
   pgdata:
