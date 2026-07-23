@@ -4,6 +4,10 @@ A fault-tolerant, Postgres-backed task queue that survives worker crashes withou
 
 [![CI](https://github.com/pari23367/logqueue/actions/workflows/ci.yml/badge.svg)](https://github.com/pari23367/logqueue/actions/workflows/ci.yml)
 
+![demo](docs/demo.gif)
+
+Four workers processing tasks; one is killed mid-task and the reaper reclaims its work 30 seconds later.
+
 **Live**: https://logqueue.onrender.com — free tier, so the first request after a period of inactivity takes about 50 seconds to cold start.
 
 ## Why I built this
